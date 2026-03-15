@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Адмін-панель: Додавання товару</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        background: #f4f4f4;
+      }
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 400px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      input {
+        display: block;
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+      button {
+        width: 100%;
+        padding: 10px;
+        background: #28a745;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #218838;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Додати новий товар</h2>
+      <input type="text" id="p-name" placeholder="Назва (напр. Куряче філе)" />
+      <input type="number" id="p-price" placeholder="Ціна (грн)" />
+      <button id="add-btn">Опублікувати на сайті</button>
+      <p id="status"></p>
+    </div>
+
+    <script type="module">
+      // Імпортуємо необхідні функції з Firebase SDK
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        addDoc,
+        serverTimestamp,
+      } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+
+      // ВСТАВ СВІЙ КОНФІГ ТУТ
+      const firebaseConfig = {
+        apiKey: "AIzaSyCTsQPSdpk0t_bOm-i_n1pcaDLRkhjWG7s",
+        authDomain: "my-farm-shop-12677.firebaseapp.com",
+        projectId: "my-farm-shop-12677",
+        storageBucket: "my-farm-shop-12677.firebasestorage.app",
+        messagingSenderId: "829396362984",
+        appId: "1:829396362984:web:30505027af46f9fd88cb5d",
+      };
+
+      // Ініціалізація
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const btn = document.getElementById("add-btn");
+      const status = document.getElementById("status");
+
+      btn.onclick = async () => {
+        const name = document.getElementById("p-name").value;
+        const price = document.getElementById("p-price").value;
+
+        if (!name || !price) return alert("Заповни всі поля!");
+
+        status.innerText = "Зберігаю...";
+
+        try {
+          // Записуємо дані в колекцію "products"
+          await addDoc(collection(db, "products"), {
+            title: name,
+            price: Number(price),
+            createdAt: serverTimestamp(),
+          });
+          status.innerText = "Успішно додано!";
+          document.getElementById("p-name").value = "";
+          document.getElementById("p-price").value = "";
+        } catch (e) {
+          status.innerText = "Помилка: " + e.message;
+        }
+      };
+    </script>
+  </body>
+</html>

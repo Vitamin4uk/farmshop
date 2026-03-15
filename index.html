@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Домашня Ферма: Свіжі продукти</title>
+    <style>
+      :root {
+        --primary: #28a745;
+        --dark: #333;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        margin: 0;
+        background: #f9f9f9;
+        color: var(--dark);
+      }
+      header {
+        background: var(--primary);
+        color: white;
+        padding: 1rem;
+        text-align: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .container {
+        max-width: 1000px;
+        margin: 20px auto;
+        padding: 0 15px;
+      }
+
+      /* Сітка товарів */
+      .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 20px;
+      }
+
+      /* Картка товару */
+      .product-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        transition: 0.3s;
+      }
+      .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+      }
+      .product-card h3 {
+        margin: 10px 0;
+        color: var(--dark);
+      }
+      .price {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: var(--primary);
+        margin-bottom: 15px;
+      }
+      .buy-btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
+        cursor: pointer;
+        font-weight: bold;
+        width: 100%;
+      }
+      .buy-btn:hover {
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🌿 Домашня Ферма</h1>
+      <p>Натуральні продукти з доставкою</p>
+    </header>
+
+    <div class="container">
+      <div id="loader">Завантаження свіжих продуктів...</div>
+      <div class="products-grid" id="products-container"></div>
+    </div>
+
+    <script type="module">
+      // 1. Імпорт необхідних модулів Firebase
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js";
+      import {
+        getFirestore,
+        collection,
+        onSnapshot,
+        query,
+        orderBy,
+      } from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";
+
+      // 2. Твої конфігурації (ВСТАВ СВОЇ ДАНІ)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCTsQPSdpk0t_bOm-i_n1pcaDLRkhjWG7s",
+        authDomain: "my-farm-shop-12677.firebaseapp.com",
+        projectId: "my-farm-shop-12677",
+        storageBucket: "my-farm-shop-12677.firebasestorage.app",
+        messagingSenderId: "829396362984",
+        appId: "1:829396362984:web:30505027af46f9fd88cb5d",
+      };
+
+      const TELEGRAM_TOKEN = "8361390388:AAEUuq9DXJ9W70KZ6HEsnWBf7qEZViR26I";
+      const TELEGRAM_CHAT_ID = "136287864";
+
+      // 3. Ініціалізація Firebase
+      const app = initializeApp(firebaseConfig);
+      const db = getFirestore(app);
+
+      const container = document.getElementById("products-container");
+      const loader = document.getElementById("loader");
+
+      // --- ФУНКЦІЯ ВІДПРАВКИ В TELEGRAM ---
+      window.sendOrderToTelegram = async (productName, price) => {
+        const message = `🚀 *НОВЕ ЗАМОВЛЕННЯ!*\n\n📦 *Товар:* ${productName}\n💰 *Ціна:* ${price} грн\n\n✅ Сформовано через сайт "Домашня Ферма"`;
+
+        const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: TELEGRAM_CHAT_ID,
+              text: message,
+              parse_mode: "Markdown", // Робить текст жирним у Telegram
+            }),
+          });
+
+          if (response.ok) {
+            alert(
+              `Дякуємо! Замовлення на "${productName}" прийнято. Ми зв'яжемося з вами найближчим часом.`,
+            );
+          } else {
+            throw new Error("Помилка сервера Telegram");
+          }
+        } catch (error) {
+          console.error("Помилка:", error);
+          alert("Вибачте, сталася помилка при оформленні. Спробуйте ще раз.");
+        }
+      };
+
+      // --- ОПЕРАЦІЯ "ЖИВА ВІТРИНА" ---
+      // Створюємо запит: колекція "products", сортування за датою (нові зверху)
+      const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+
+      // Слухаємо базу в реальному часі
+      onSnapshot(
+        q,
+        (snapshot) => {
+          loader.style.display = "none";
+          container.innerHTML = ""; // Очищуємо контейнер перед оновленням
+
+          if (snapshot.empty) {
+            container.innerHTML =
+              "<p>Наразі товарів немає. Зайдіть пізніше!</p>";
+            return;
+          }
+
+          snapshot.forEach((doc) => {
+            const product = doc.data();
+            const card = `
+        <div class="product-card">
+          <h3>${product.title}</h3>
+          <div class="price">${product.price} грн</div>
+          <button class="buy-btn" onclick="sendOrderToTelegram('${product.title}', '${product.price}')">
+            Замовити в один клік
+          </button>
+        </div>
+      `;
+            container.innerHTML += card;
+          });
+        },
+        (error) => {
+          console.error("Помилка Firestore:", error);
+          loader.innerText = "Помилка завантаження даних. Перевірте консоль.";
+        },
+      );
+    </script>
+  </body>
+</html>
